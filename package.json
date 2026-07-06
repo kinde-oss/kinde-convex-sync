@@ -1,13 +1,13 @@
 {
-  "name": "@sholajegede/kinde-sync",
+  "name": "@kinde-oss/kinde-convex-sync",
   "description": "A kinde sync component for Convex.",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/sholajegede/kinde-sync.git"
+    "url": "git+https://github.com/kinde-oss/kinde-convex-sync.git"
   },
-  "homepage": "https://github.com/sholajegede/kinde-sync#readme",
+  "homepage": "https://github.com/kinde-oss/kinde-convex-sync#readme",
   "bugs": {
-    "url": "https://github.com/sholajegede/kinde-sync/issues"
+    "url": "https://github.com/kinde-oss/kinde-convex-sync/issues"
   },
   "version": "0.1.2",
   "license": "Apache-2.0",

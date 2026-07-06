@@ -1,11 +1,9 @@
-# @sholajegede/kinde-sync
+# @kinde-oss/kinde-convex-sync
 
 A [Convex component](https://www.convex.dev/components) that syncs [Kinde](https://kinde.com) users into your Convex database in real time via webhooks. When a user is created, updated, or deleted in Kinde, your Convex database updates instantly — no polling, no boilerplate JWT verification, no manual sync logic.
 
-[![npm version](https://badge.fury.io/js/@sholajegede%2Fkinde-sync.svg)](https://badge.fury.io/js/@sholajegede%2Fkinde-sync)
-[![Convex Component](https://www.convex.dev/components/badge/sholajegede/kinde-sync)](https://www.convex.dev/components/sholajegede/kinde-sync)
 
-Found a bug? Feature request? [File it here](https://github.com/sholajegede/kinde-sync/issues).
+Found a bug? Feature request? [File it here](https://github.com/kinde-oss/kinde-convex-sync/issues).
 
 <!-- START: Include on https://convex.dev/components -->
 
@@ -51,13 +49,13 @@ KINDE_POST_LOGIN_REDIRECT_URL=http://localhost:3000/dashboard
 
 ## Installation
 ```sh
-npm install @sholajegede/kinde-sync
+npm install @kinde-oss/kinde-convex-sync
 ```
 
 Add the component to your `convex/convex.config.ts`:
 ```ts
 import { defineApp } from "convex/server";
-import kindeSync from "@sholajegede/kinde-sync/convex.config.js";
+import kindeSync from "@kinde-oss/kinde-convex-sync/convex.config.js";
 
 const app = defineApp();
 app.use(kindeSync);
@@ -71,7 +69,7 @@ export default app;
 ```ts
 import { httpRouter } from "convex/server";
 import { components } from "./_generated/api.js";
-import { KindeSync } from "@sholajegede/kinde-sync";
+import { KindeSync } from "@kinde-oss/kinde-convex-sync";
 
 const kindeSync = new KindeSync(components.kindeSync, {
   KINDE_ISSUER_URL: process.env.KINDE_ISSUER_URL!,
