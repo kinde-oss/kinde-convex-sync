@@ -1,1 +1,17 @@
-<!-- Ideally, this should get auto-generated via tools like [auto-changelog](https://github.com/CookPete/auto-changelog). Eventually, this will get set up as part of the repository template. -->
+# Changelog
+
+## 0.1.3
+
+- Fix null permissions from Kinde webhook payload
+
+## 0.1.2
+
+- Add auth.config.ts example for ctx.auth support
+
+## 0.1.1
+
+- Update README with full Kinde setup instructions
+
+## 0.0.0
+
+- Initial release.
