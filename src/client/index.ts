@@ -58,8 +58,23 @@ export class KindeSync {
         return jsonResponse(401, { error: "Invalid token" });
       }
 
-      const webhookId =
-        (payload["jti"] as string) ?? `${payload["event_id"] ?? Date.now()}`;
+      // Kinde webhooks are JWTs and always carry a `jti`, so this rejection is
+      // only for genuinely malformed payloads. There is deliberately no
+      // Date.now() fallback: an event with neither `jti` nor `event_id` cannot
+      // be deduplicated, and minting a fresh id per retry would make every
+      // retry look new and defeat idempotency — so we refuse to process it.
+      const jti = payload["jti"];
+      const eventId = payload["event_id"];
+      let webhookId: string;
+      if (typeof jti === "string" && jti) {
+        webhookId = jti;
+      } else if (typeof eventId === "string" && eventId) {
+        webhookId = eventId;
+      } else if (typeof eventId === "number") {
+        webhookId = `${eventId}`;
+      } else {
+        return jsonResponse(400, { error: "Missing webhook identifier" });
+      }
 
       const eventType = payload["type"] as string;
       const data = payload["data"] as Record<string, unknown>;

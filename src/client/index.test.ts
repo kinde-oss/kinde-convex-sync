@@ -128,6 +128,7 @@ describe("KindeSync webhookHandler", () => {
   test("returns 400 when the user id is missing (no blank-keyed write)", async () => {
     mockJwtVerify.mockResolvedValue({
       payload: {
+        jti: "evt_no_id",
         type: "user.created",
         data: { user: { first_name: "NoKeys" } },
       },
@@ -147,6 +148,7 @@ describe("KindeSync webhookHandler", () => {
     async (type) => {
       mockJwtVerify.mockResolvedValue({
         payload: {
+          jti: "evt_no_email",
           type,
           data: { user: { id: "kp_no_email" } },
         },
@@ -247,8 +249,7 @@ describe("KindeSync webhookHandler", () => {
     expect(args).toMatchObject({ webhookId: "987654", kindeId: "kp_evt" });
   });
 
-  test("falls back to Date.now() as webhookId when jti and event_id are absent", async () => {
-    const nowSpy = vi.spyOn(Date, "now").mockReturnValue(1_700_000_000_000);
+  test("returns 400 and does not process when both jti and event_id are absent", async () => {
     mockJwtVerify.mockResolvedValue({
       payload: {
         type: "user.created",
@@ -261,13 +262,10 @@ describe("KindeSync webhookHandler", () => {
       postRequest("some.jwt.token"),
     );
 
-    expect(res.status).toBe(200);
-    expect(ctx.runMutation).toHaveBeenCalledTimes(1);
-    const [, args] = ctx.runMutation.mock.calls[0];
-    expect(args).toMatchObject({
-      webhookId: "1700000000000",
-      kindeId: "kp_now",
-    });
-    nowSpy.mockRestore();
+    // An event with no dedup identifier must not be processed — otherwise every
+    // retry would look new and defeat idempotency.
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: "Missing webhook identifier" });
+    expect(ctx.runMutation).not.toHaveBeenCalled();
   });
 });
