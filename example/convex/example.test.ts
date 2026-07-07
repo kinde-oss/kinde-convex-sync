@@ -24,7 +24,9 @@ describe("kinde-sync example", () => {
 
   test("listUsers returns empty page when no users synced", async () => {
     const t = initConvexTest();
-    const result = await t.query(api.example.listUsers, {});
+    const result = await t.query(api.example.listUsers, {
+      paginationOpts: { numItems: 100, cursor: null },
+    });
     expect(result.page).toHaveLength(0);
     expect(result.isDone).toBe(true);
   });
@@ -55,7 +57,9 @@ describe("kinde-sync example", () => {
     });
     expect(byEmail?.kindeId).toBe("kp_example123");
 
-    const list = await t.query(api.example.listUsers, {});
+    const list = await t.query(api.example.listUsers, {
+      paginationOpts: { numItems: 100, cursor: null },
+    });
     expect(list.page).toHaveLength(1);
     expect(list.page[0]?.kindeId).toBe("kp_example123");
   });

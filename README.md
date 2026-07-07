@@ -143,6 +143,7 @@ Query synced users reactively from your Convex functions:
 ```ts
 import { query } from "./_generated/server.js";
 import { components } from "./_generated/api.js";
+import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
 
 export const getUser = query({
@@ -155,26 +156,25 @@ export const getUser = query({
 });
 
 export const listUsers = query({
-  args: {
-    limit: v.optional(v.number()),
-    cursor: v.optional(v.union(v.string(), v.null())),
-  },
+  args: { paginationOpts: paginationOptsValidator },
   handler: async (ctx, args) => {
     return await ctx.runQuery(components.kindeSync.lib.listUsers, {
-      limit: args.limit,
-      cursor: args.cursor,
+      paginationOpts: args.paginationOpts,
     });
   },
 });
 ```
-`listUsers` is paginated: it returns `{ page, isDone, continueCursor }`. Pass the
-previous `continueCursor` back as `cursor` to fetch the next page (and an
-optional `limit`, default `100`).
+`listUsers` uses Convex's standard pagination: it takes `paginationOpts` and
+returns `{ page, isDone, continueCursor }`, so it works directly with
+`usePaginatedQuery`.
 ```tsx
 // React
 const user = useQuery(api.myFunctions.getUser, { kindeId: "kp_..." });
-const result = useQuery(api.myFunctions.listUsers, {});
-const users = result?.page ?? [];
+const { results: users, status, loadMore } = usePaginatedQuery(
+  api.myFunctions.listUsers,
+  {},
+  { initialNumItems: 100 },
+);
 ```
 
 ## API
@@ -195,7 +195,7 @@ const users = result?.page ?? [];
 |---|---|---|
 | `components.kindeSync.lib.getUser` | `{ kindeId: string }` | User or `null` |
 | `components.kindeSync.lib.getUserByEmail` | `{ email: string }` | User or `null` |
-| `components.kindeSync.lib.listUsers` | `{ limit?: number, cursor?: string \| null }` | `{ page: User[], isDone: boolean, continueCursor: string }` |
+| `components.kindeSync.lib.listUsers` | `{ paginationOpts }` (from `paginationOptsValidator`) | `{ page: User[], isDone: boolean, continueCursor: string }` |
 
 ### User shape
 ```ts

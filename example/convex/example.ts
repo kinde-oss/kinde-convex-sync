@@ -1,6 +1,27 @@
 import { query } from "./_generated/server.js";
 import { components } from "./_generated/api.js";
+import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
+
+// Mirrors the component's synced-user shape, for a self-documenting surface.
+const userValidator = v.object({
+  _id: v.string(),
+  _creationTime: v.number(),
+  kindeId: v.string(),
+  email: v.string(),
+  firstName: v.optional(v.string()),
+  lastName: v.optional(v.string()),
+  imageUrl: v.optional(v.string()),
+  isSuspended: v.boolean(),
+  organizations: v.array(
+    v.object({
+      code: v.string(),
+      roles: v.optional(v.string()),
+      permissions: v.optional(v.string()),
+    }),
+  ),
+  lastSyncedAt: v.number(),
+});
 
 // Reactive query — get a Kinde user by their Kinde ID
 export const getUser = query({
@@ -24,14 +45,15 @@ export const getUserByEmail = query({
 
 // Reactive query — list synced Kinde users, one page at a time
 export const listUsers = query({
-  args: {
-    limit: v.optional(v.number()),
-    cursor: v.optional(v.union(v.string(), v.null())),
-  },
+  args: { paginationOpts: paginationOptsValidator },
+  returns: v.object({
+    page: v.array(userValidator),
+    isDone: v.boolean(),
+    continueCursor: v.string(),
+  }),
   handler: async (ctx, args) => {
     return await ctx.runQuery(components.kindeSync.lib.listUsers, {
-      limit: args.limit,
-      cursor: args.cursor,
+      paginationOpts: args.paginationOpts,
     });
   },
 });

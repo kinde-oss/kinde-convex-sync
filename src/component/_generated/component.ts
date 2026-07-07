@@ -92,7 +92,16 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
       listUsers: FunctionReference<
         "query",
         "internal",
-        { cursor?: string | null; limit?: number },
+        {
+          paginationOpts: {
+            cursor: string | null;
+            endCursor?: string | null;
+            id?: number;
+            maximumBytesRead?: number;
+            maximumRowsRead?: number;
+            numItems: number;
+          };
+        },
         {
           continueCursor: string;
           isDone: boolean;

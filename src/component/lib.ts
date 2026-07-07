@@ -1,11 +1,14 @@
-import { v } from "convex/values";
+import { v, type Infer } from "convex/values";
+import { paginationOptsValidator } from "convex/server";
 import {
   internalMutation,
   internalQuery,
   mutation,
   query,
+  type MutationCtx,
+  type QueryCtx,
 } from "./_generated/server.js";
-import { internal } from "./_generated/api.js";
+import type { Id } from "./_generated/dataModel.js";
 
 const orgValidator = v.object({
   code: v.string(),
@@ -26,62 +29,56 @@ const userValidator = v.object({
   lastSyncedAt: v.number(),
 });
 
-// ─── Internal helpers ────────────────────────────────────────────────────────
+// ─── Shared helpers ──────────────────────────────────────────────────────────
+//
+// Plain async functions holding the single source of truth for each unit of
+// work. `handleWebhookEvent` calls them directly on the hot path (no
+// runQuery/runMutation overhead, no isolated JS context), and the
+// internalQuery/internalMutation exports below are thin wrappers around the
+// same helpers so external and cron callers keep working.
 
-export const isWebhookProcessed = internalQuery({
-  args: { webhookId: v.string() },
-  returns: v.boolean(),
-  handler: async (ctx, args) => {
-    const existing = await ctx.db
-      .query("processedWebhooks")
-      .withIndex("by_webhookId", (q) => q.eq("webhookId", args.webhookId))
-      .first();
-    return existing !== null;
-  },
-});
+const upsertUserArgs = {
+  kindeId: v.string(),
+  email: v.string(),
+  firstName: v.optional(v.string()),
+  lastName: v.optional(v.string()),
+  imageUrl: v.optional(v.string()),
+  isSuspended: v.boolean(),
+  organizations: v.array(orgValidator),
+};
+type UpsertUserArgs = Infer<ReturnType<typeof v.object<typeof upsertUserArgs>>>;
 
-export const markWebhookProcessed = internalMutation({
-  args: { webhookId: v.string() },
-  returns: v.null(),
-  handler: async (ctx, args) => {
-    await ctx.db.insert("processedWebhooks", {
-      webhookId: args.webhookId,
-      processedAt: Date.now(),
-    });
-    return null;
-  },
-});
+async function isWebhookProcessedHelper(
+  ctx: QueryCtx,
+  webhookId: string,
+): Promise<boolean> {
+  const existing = await ctx.db
+    .query("processedWebhooks")
+    .withIndex("by_webhookId", (q) => q.eq("webhookId", webhookId))
+    .first();
+  return existing !== null;
+}
 
-export const upsertUser = internalMutation({
-  args: {
-    kindeId: v.string(),
-    email: v.string(),
-    firstName: v.optional(v.string()),
-    lastName: v.optional(v.string()),
-    imageUrl: v.optional(v.string()),
-    isSuspended: v.boolean(),
-    organizations: v.array(orgValidator),
-  },
-  returns: v.id("kindeUsers"),
-  handler: async (ctx, args) => {
-    const existing = await ctx.db
-      .query("kindeUsers")
-      .withIndex("by_kindeId", (q) => q.eq("kindeId", args.kindeId))
-      .first();
-    if (existing) {
-      await ctx.db.patch("kindeUsers", existing._id, {
-        email: args.email,
-        firstName: args.firstName,
-        lastName: args.lastName,
-        imageUrl: args.imageUrl,
-        isSuspended: args.isSuspended,
-        organizations: args.organizations,
-        lastSyncedAt: Date.now(),
-      });
-      return existing._id;
-    }
-    return await ctx.db.insert("kindeUsers", {
-      kindeId: args.kindeId,
+async function markWebhookProcessedHelper(
+  ctx: MutationCtx,
+  webhookId: string,
+): Promise<void> {
+  await ctx.db.insert("processedWebhooks", {
+    webhookId,
+    processedAt: Date.now(),
+  });
+}
+
+async function upsertUserHelper(
+  ctx: MutationCtx,
+  args: UpsertUserArgs,
+): Promise<Id<"kindeUsers">> {
+  const existing = await ctx.db
+    .query("kindeUsers")
+    .withIndex("by_kindeId", (q) => q.eq("kindeId", args.kindeId))
+    .first();
+  if (existing) {
+    await ctx.db.patch("kindeUsers", existing._id, {
       email: args.email,
       firstName: args.firstName,
       lastName: args.lastName,
@@ -90,18 +87,59 @@ export const upsertUser = internalMutation({
       organizations: args.organizations,
       lastSyncedAt: Date.now(),
     });
+    return existing._id;
+  }
+  return await ctx.db.insert("kindeUsers", {
+    kindeId: args.kindeId,
+    email: args.email,
+    firstName: args.firstName,
+    lastName: args.lastName,
+    imageUrl: args.imageUrl,
+    isSuspended: args.isSuspended,
+    organizations: args.organizations,
+    lastSyncedAt: Date.now(),
+  });
+}
+
+async function deleteUserHelper(
+  ctx: MutationCtx,
+  kindeId: string,
+): Promise<void> {
+  const existing = await ctx.db
+    .query("kindeUsers")
+    .withIndex("by_kindeId", (q) => q.eq("kindeId", kindeId))
+    .first();
+  if (existing) await ctx.db.delete("kindeUsers", existing._id);
+}
+
+// ─── Internal wrappers (thin) ────────────────────────────────────────────────
+
+export const isWebhookProcessed = internalQuery({
+  args: { webhookId: v.string() },
+  returns: v.boolean(),
+  handler: (ctx, args) => isWebhookProcessedHelper(ctx, args.webhookId),
+});
+
+export const markWebhookProcessed = internalMutation({
+  args: { webhookId: v.string() },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await markWebhookProcessedHelper(ctx, args.webhookId);
+    return null;
   },
+});
+
+export const upsertUser = internalMutation({
+  args: upsertUserArgs,
+  returns: v.id("kindeUsers"),
+  handler: (ctx, args) => upsertUserHelper(ctx, args),
 });
 
 export const deleteUser = internalMutation({
   args: { kindeId: v.string() },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const existing = await ctx.db
-      .query("kindeUsers")
-      .withIndex("by_kindeId", (q) => q.eq("kindeId", args.kindeId))
-      .first();
-    if (existing) await ctx.db.delete("kindeUsers", existing._id);
+    await deleteUserHelper(ctx, args.kindeId);
     return null;
   },
 });
@@ -120,24 +158,18 @@ export const handleWebhookEvent = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    // Deduplicate by webhook ID so retried deliveries are no-ops.
-    const alreadyProcessed = await ctx.runQuery(
-      internal.lib.isWebhookProcessed,
-      { webhookId: args.webhookId },
-    );
-    if (alreadyProcessed) return null;
-    await ctx.runMutation(internal.lib.markWebhookProcessed, {
-      webhookId: args.webhookId,
-    });
+    // Deduplicate by webhook ID so retried deliveries are no-ops. The helpers
+    // run inline in this single mutation transaction, which already guarantees
+    // atomicity.
+    if (await isWebhookProcessedHelper(ctx, args.webhookId)) return null;
+    await markWebhookProcessedHelper(ctx, args.webhookId);
 
     if (args.type === "user.deleted") {
-      await ctx.runMutation(internal.lib.deleteUser, {
-        kindeId: args.kindeId,
-      });
+      await deleteUserHelper(ctx, args.kindeId);
       return null;
     }
 
-    await ctx.runMutation(internal.lib.upsertUser, {
+    await upsertUserHelper(ctx, {
       kindeId: args.kindeId,
       email: args.email,
       firstName: args.firstName,
@@ -172,13 +204,8 @@ export const getUserByEmail = query({
   },
 });
 
-const DEFAULT_PAGE_SIZE = 100;
-
 export const listUsers = query({
-  args: {
-    limit: v.optional(v.number()),
-    cursor: v.optional(v.union(v.string(), v.null())),
-  },
+  args: { paginationOpts: paginationOptsValidator },
   returns: v.object({
     page: v.array(userValidator),
     isDone: v.boolean(),
@@ -188,10 +215,7 @@ export const listUsers = query({
     const result = await ctx.db
       .query("kindeUsers")
       .order("desc")
-      .paginate({
-        numItems: args.limit ?? DEFAULT_PAGE_SIZE,
-        cursor: args.cursor ?? null,
-      });
+      .paginate(args.paginationOpts);
     return {
       page: result.page,
       isDone: result.isDone,

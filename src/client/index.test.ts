@@ -226,4 +226,48 @@ describe("KindeSync webhookHandler", () => {
       organizations: [{ code: "org_1", roles: "admin" }],
     });
   });
+
+  test("falls back to event_id as webhookId when jti is absent", async () => {
+    mockJwtVerify.mockResolvedValue({
+      payload: {
+        event_id: 987654,
+        type: "user.created",
+        data: { user: { id: "kp_evt", email: "evt@example.com" } },
+      },
+    } as unknown as Awaited<ReturnType<typeof jwtVerify>>);
+    const ctx: MockCtx = { runMutation: vi.fn().mockResolvedValue(null) };
+    const res = await getHandler(makeClient())(
+      ctx,
+      postRequest("some.jwt.token"),
+    );
+
+    expect(res.status).toBe(200);
+    expect(ctx.runMutation).toHaveBeenCalledTimes(1);
+    const [, args] = ctx.runMutation.mock.calls[0];
+    expect(args).toMatchObject({ webhookId: "987654", kindeId: "kp_evt" });
+  });
+
+  test("falls back to Date.now() as webhookId when jti and event_id are absent", async () => {
+    const nowSpy = vi.spyOn(Date, "now").mockReturnValue(1_700_000_000_000);
+    mockJwtVerify.mockResolvedValue({
+      payload: {
+        type: "user.created",
+        data: { user: { id: "kp_now", email: "now@example.com" } },
+      },
+    } as unknown as Awaited<ReturnType<typeof jwtVerify>>);
+    const ctx: MockCtx = { runMutation: vi.fn().mockResolvedValue(null) };
+    const res = await getHandler(makeClient())(
+      ctx,
+      postRequest("some.jwt.token"),
+    );
+
+    expect(res.status).toBe(200);
+    expect(ctx.runMutation).toHaveBeenCalledTimes(1);
+    const [, args] = ctx.runMutation.mock.calls[0];
+    expect(args).toMatchObject({
+      webhookId: "1700000000000",
+      kindeId: "kp_now",
+    });
+    nowSpy.mockRestore();
+  });
 });

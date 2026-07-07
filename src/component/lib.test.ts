@@ -42,7 +42,9 @@ describe("component lib", () => {
     };
     await t.mutation(api.lib.handleWebhookEvent, args);
     await t.mutation(api.lib.handleWebhookEvent, args);
-    const users = await t.query(api.lib.listUsers, {});
+    const users = await t.query(api.lib.listUsers, {
+      paginationOpts: { numItems: 100, cursor: null },
+    });
     expect(users.page.filter((u) => u.kindeId === "kp_test456")).toHaveLength(
       1,
     );
