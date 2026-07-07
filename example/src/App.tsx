@@ -13,11 +13,12 @@ function UserLookup() {
   );
 
   return (
-    <div style={{ marginBottom: "2rem", padding: "1.5rem", border: "1px solid rgba(128,128,128,0.3)", borderRadius: "8px" }}>
+    <div className="panel">
       <h2 style={{ marginTop: 0 }}>🔍 Look Up User by Kinde ID</h2>
       <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem" }}>
         <input
           type="text"
+          aria-label="Kinde ID"
           value={kindeId}
           onChange={(e) => setKindeId(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && setSubmittedId(kindeId)}
@@ -29,7 +30,7 @@ function UserLookup() {
         </button>
       </div>
       {submittedId && user === null && (
-        <div style={{ color: "#888", fontStyle: "italic" }}>No user found.</div>
+        <div className="empty-state">No user found.</div>
       )}
       {user && (
         <div style={{ textAlign: "left", background: "rgba(0,0,0,0.05)", padding: "1rem", borderRadius: "4px" }}>
@@ -45,13 +46,14 @@ function UserLookup() {
 }
 
 function UserList() {
-  const users = useQuery(api.example.listUsers, {});
+  const result = useQuery(api.example.listUsers, {});
+  const users = result?.page;
 
   return (
-    <div style={{ marginBottom: "2rem", padding: "1.5rem", border: "1px solid rgba(128,128,128,0.3)", borderRadius: "8px" }}>
+    <div className="panel">
       <h2 style={{ marginTop: 0 }}>👥 All Synced Users ({users?.length ?? 0})</h2>
       {users?.length === 0 && (
-        <div style={{ color: "#888", fontStyle: "italic" }}>
+        <div className="empty-state">
           No users synced yet. Create a user in your Kinde dashboard to see them appear here instantly.
         </div>
       )}

@@ -22,10 +22,16 @@ export const getUserByEmail = query({
   },
 });
 
-// Reactive query — list all synced Kinde users
+// Reactive query — list synced Kinde users, one page at a time
 export const listUsers = query({
-  args: {},
-  handler: async (ctx) => {
-    return await ctx.runQuery(components.kindeSync.lib.listUsers, {});
+  args: {
+    limit: v.optional(v.number()),
+    cursor: v.optional(v.union(v.string(), v.null())),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.runQuery(components.kindeSync.lib.listUsers, {
+      limit: args.limit,
+      cursor: args.cursor,
+    });
   },
 });

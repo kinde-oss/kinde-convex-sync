@@ -92,23 +92,27 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
       listUsers: FunctionReference<
         "query",
         "internal",
-        {},
-        Array<{
-          _creationTime: number;
-          _id: string;
-          email: string;
-          firstName?: string;
-          imageUrl?: string;
-          isSuspended: boolean;
-          kindeId: string;
-          lastName?: string;
-          lastSyncedAt: number;
-          organizations: Array<{
-            code: string;
-            permissions?: string;
-            roles?: string;
+        { cursor?: string | null; limit?: number },
+        {
+          continueCursor: string;
+          isDone: boolean;
+          page: Array<{
+            _creationTime: number;
+            _id: string;
+            email: string;
+            firstName?: string;
+            imageUrl?: string;
+            isSuspended: boolean;
+            kindeId: string;
+            lastName?: string;
+            lastSyncedAt: number;
+            organizations: Array<{
+              code: string;
+              permissions?: string;
+              roles?: string;
+            }>;
           }>;
-        }>,
+        },
         Name
       >;
     };

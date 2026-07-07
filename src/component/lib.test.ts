@@ -1,6 +1,6 @@
 /// <reference types="vite/client" />
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { api } from "./_generated/api.js";
+import { api, internal } from "./_generated/api.js";
 import { initConvexTest } from "./setup.test.js";
 
 describe("component lib", () => {
@@ -43,7 +43,9 @@ describe("component lib", () => {
     await t.mutation(api.lib.handleWebhookEvent, args);
     await t.mutation(api.lib.handleWebhookEvent, args);
     const users = await t.query(api.lib.listUsers, {});
-    expect(users.filter((u) => u.kindeId === "kp_test456")).toHaveLength(1);
+    expect(users.page.filter((u) => u.kindeId === "kp_test456")).toHaveLength(
+      1,
+    );
   });
 
   test("handleWebhookEvent deletes user on user.deleted", async () => {
@@ -66,5 +68,30 @@ describe("component lib", () => {
     });
     const user = await t.query(api.lib.getUser, { kindeId: "kp_delete_me" });
     expect(user).toBeNull();
+  });
+
+  test("cleanupProcessedWebhooks prunes rows older than the retention window", async () => {
+    const t = initConvexTest();
+    vi.setSystemTime(new Date("2026-01-01T00:00:00Z"));
+
+    await t.mutation(api.lib.handleWebhookEvent, {
+      webhookId: "retention-webhook",
+      type: "user.created",
+      kindeId: "kp_retention",
+      email: "retention@example.com",
+      isSuspended: false,
+      organizations: [],
+    });
+
+    // Freshly processed rows are within the window and must be kept.
+    const noop = await t.mutation(internal.lib.cleanupProcessedWebhooks, {});
+    expect(noop.deleted).toBe(0);
+
+    // 8 days later the dedup record is past the 7-day retention window.
+    const eightDaysLater = new Date("2026-01-09T00:00:00Z").getTime();
+    const pruned = await t.mutation(internal.lib.cleanupProcessedWebhooks, {
+      now: eightDaysLater,
+    });
+    expect(pruned.deleted).toBe(1);
   });
 });

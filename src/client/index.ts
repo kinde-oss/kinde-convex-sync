@@ -7,6 +7,14 @@ export type KindeSyncOptions = {
   KINDE_ISSUER_URL: string;
 };
 
+/** Build a JSON response with the standard Content-Type header. */
+function jsonResponse(status: number, body: Record<string, unknown>): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
 export class KindeSync {
   webhookHandler: ReturnType<typeof httpActionGeneric>;
 
@@ -17,63 +25,80 @@ export class KindeSync {
     const domain = options.KINDE_ISSUER_URL;
     const component_ = component;
 
+    // Validate the issuer before building any URL, so a missing config throws a
+    // clear error instead of producing "undefined/.well-known/jwks.json" and
+    // crashing module analysis at deploy time.
+    if (!domain) {
+      throw new Error(
+        "KindeSync: KINDE_ISSUER_URL is required to construct the client",
+      );
+    }
+
+    // Create the JWKS client once, keyed by the (validated) issuer domain, so
+    // jose's built-in key cache is reused across requests instead of being
+    // rebuilt (and refetched) on every webhook.
+    const JWKS: ReturnType<typeof createRemoteJWKSet> = createRemoteJWKSet(
+      new URL(`${domain}/.well-known/jwks.json`),
+    );
+
     this.webhookHandler = httpActionGeneric(async (ctx, request) => {
       const token = await request.text();
       if (!token) {
-        return new Response(JSON.stringify({ error: "Missing token" }), {
-          status: 400,
-          headers: { "Content-Type": "application/json" },
-        });
+        return jsonResponse(400, { error: "Missing token" });
       }
-
-      const JWKS = createRemoteJWKSet(
-        new URL(`${domain}/.well-known/jwks.json`),
-      );
 
       let payload: Record<string, unknown>;
       try {
-        const result = await jwtVerify(token, JWKS);
+        // Bind verification to the tenant by asserting the issuer matches the
+        // domain we fetched the JWKS from.
+        const result = await jwtVerify(token, JWKS, { issuer: domain });
         payload = result.payload as Record<string, unknown>;
       } catch (err) {
         console.error("Kinde webhook JWT verification failed:", err);
-        return new Response(JSON.stringify({ error: "Invalid token" }), {
-          status: 401,
-          headers: { "Content-Type": "application/json" },
-        });
+        return jsonResponse(401, { error: "Invalid token" });
       }
 
       const webhookId =
-        (payload["jti"] as string) ??
-        `${payload["event_id"] ?? Date.now()}`;
+        (payload["jti"] as string) ?? `${payload["event_id"] ?? Date.now()}`;
 
       const eventType = payload["type"] as string;
       const data = payload["data"] as Record<string, unknown>;
       const user = data?.["user"] as Record<string, unknown> | undefined;
 
       if (!eventType || !user) {
-        return new Response(JSON.stringify({ error: "Invalid payload" }), {
-          status: 400,
-          headers: { "Content-Type": "application/json" },
-        });
+        return jsonResponse(400, { error: "Invalid payload" });
       }
 
-      const organizations = (
-        (user["organizations"] as unknown[]) ?? []
-      ).map((org) => {
-        const o = org as Record<string, unknown>;
-        const permissions = o["permissions"];
-        return {
-          code: (o["code"] as string) ?? "",
-          roles: (o["roles"] as string) || undefined,
-          permissions: typeof permissions === "string" ? permissions : undefined,
-        };
-      });
+      const kindeId = (user["id"] as string) ?? "";
+      const email = (user["email"] as string) ?? "";
+      // Every event is keyed by id, so it is always required.
+      if (!kindeId) {
+        return jsonResponse(400, { error: "Missing user id" });
+      }
+      // A delete only needs the id; create/update write the email, so it must
+      // be present for those to avoid blank-keyed records.
+      if (eventType !== "user.deleted" && !email) {
+        return jsonResponse(400, { error: "Missing user email" });
+      }
+
+      const organizations = ((user["organizations"] as unknown[]) ?? []).map(
+        (org) => {
+          const o = org as Record<string, unknown>;
+          const permissions = o["permissions"];
+          return {
+            code: (o["code"] as string) ?? "",
+            roles: (o["roles"] as string) || undefined,
+            permissions:
+              typeof permissions === "string" ? permissions : undefined,
+          };
+        },
+      );
 
       await ctx.runMutation(component_.lib.handleWebhookEvent, {
         webhookId,
         type: eventType,
-        kindeId: (user["id"] as string) ?? "",
-        email: (user["email"] as string) ?? "",
+        kindeId,
+        email,
         firstName: (user["first_name"] as string) || undefined,
         lastName: (user["last_name"] as string) || undefined,
         imageUrl: (user["image_url"] as string) || undefined,
@@ -81,10 +106,7 @@ export class KindeSync {
         organizations,
       });
 
-      return new Response(JSON.stringify({ success: true }), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      });
+      return jsonResponse(200, { success: true });
     });
   }
 }

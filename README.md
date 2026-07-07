@@ -97,11 +97,21 @@ npx convex env set KINDE_CLIENT_SECRET your_client_secret
 
 This component handles webhook sync only. To enable `ctx.auth` in your Convex functions, create `convex/auth.config.ts`:
 ```ts
+const issuerUrl = process.env.KINDE_ISSUER_URL;
+const clientId = process.env.KINDE_CLIENT_ID;
+
+if (!issuerUrl) {
+  throw new Error("KINDE_ISSUER_URL environment variable is required");
+}
+if (!clientId) {
+  throw new Error("KINDE_CLIENT_ID environment variable is required");
+}
+
 const authConfig = {
   providers: [
     {
-      domain: process.env.KINDE_ISSUER_URL,
-      applicationID: process.env.KINDE_CLIENT_ID,
+      domain: issuerUrl,
+      applicationID: clientId,
     },
   ],
 };
@@ -115,7 +125,7 @@ export default authConfig;
 2. Click **Add webhook**
 3. Give it a name e.g. `Convex user sync`
 4. In the **Endpoint URL** field, enter your Convex HTTP actions URL:
-```
+```text
    https://<your-deployment>.convex.site/webhooks/kinde
 ```
    You can find your Convex site URL by running `npx convex dev` and looking for `VITE_CONVEX_SITE_URL` in your `.env.local`, or on the [Convex dashboard](https://dashboard.convex.dev) under your deployment settings.
@@ -145,16 +155,26 @@ export const getUser = query({
 });
 
 export const listUsers = query({
-  args: {},
-  handler: async (ctx) => {
-    return await ctx.runQuery(components.kindeSync.lib.listUsers, {});
+  args: {
+    limit: v.optional(v.number()),
+    cursor: v.optional(v.union(v.string(), v.null())),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.runQuery(components.kindeSync.lib.listUsers, {
+      limit: args.limit,
+      cursor: args.cursor,
+    });
   },
 });
 ```
+`listUsers` is paginated: it returns `{ page, isDone, continueCursor }`. Pass the
+previous `continueCursor` back as `cursor` to fetch the next page (and an
+optional `limit`, default `100`).
 ```tsx
 // React
 const user = useQuery(api.myFunctions.getUser, { kindeId: "kp_..." });
-const users = useQuery(api.myFunctions.listUsers, {});
+const result = useQuery(api.myFunctions.listUsers, {});
+const users = result?.page ?? [];
 ```
 
 ## API
@@ -175,7 +195,7 @@ const users = useQuery(api.myFunctions.listUsers, {});
 |---|---|---|
 | `components.kindeSync.lib.getUser` | `{ kindeId: string }` | User or `null` |
 | `components.kindeSync.lib.getUserByEmail` | `{ email: string }` | User or `null` |
-| `components.kindeSync.lib.listUsers` | `{}` | Array of users |
+| `components.kindeSync.lib.listUsers` | `{ limit?: number, cursor?: string \| null }` | `{ page: User[], isDone: boolean, continueCursor: string }` |
 
 ### User shape
 ```ts
