@@ -110,6 +110,7 @@
   "types": "./dist/client/index.d.ts",
   "module": "./dist/client/index.js",
   "dependencies": {
+    "convex-helpers": "^0.1.120",
     "jose": "^6.2.1"
   }
 }

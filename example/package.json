@@ -9,7 +9,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@sholajegede/kinde-sync": "alpha",
+    "@kinde-oss/kinde-convex-sync": "file:..",
+    "convex-helpers": "^0.1.120",
     "convex": "^1.32.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"

@@ -31,7 +31,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         null | {
           _creationTime: number;
           _id: string;
-          email: string;
+          email?: string;
           firstName?: string;
           imageUrl?: string;
           isSuspended: boolean;
@@ -43,6 +43,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
             permissions?: string;
             roles?: string;
           }>;
+          phone?: string;
         },
         Name
       >;
@@ -53,7 +54,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         null | {
           _creationTime: number;
           _id: string;
-          email: string;
+          email?: string;
           firstName?: string;
           imageUrl?: string;
           isSuspended: boolean;
@@ -65,6 +66,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
             permissions?: string;
             roles?: string;
           }>;
+          phone?: string;
         },
         Name
       >;
@@ -72,7 +74,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         "mutation",
         "internal",
         {
-          email: string;
+          email?: string;
           firstName?: string;
           imageUrl?: string;
           isSuspended: boolean;
@@ -83,6 +85,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
             permissions?: string;
             roles?: string;
           }>;
+          phone?: string;
           type: string;
           webhookId: string;
         },
@@ -108,7 +111,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
           page: Array<{
             _creationTime: number;
             _id: string;
-            email: string;
+            email?: string;
             firstName?: string;
             imageUrl?: string;
             isSuspended: boolean;
@@ -120,6 +123,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
               permissions?: string;
               roles?: string;
             }>;
+            phone?: string;
           }>;
         },
         Name
