@@ -22,6 +22,14 @@ describe("kinde-sync example", () => {
     expect(result).toBeNull();
   });
 
+  test("getUserByPhone returns null when user does not exist", async () => {
+    const t = initConvexTest();
+    const result = await t.query(api.example.getUserByPhone, {
+      phone: "+15551234567",
+    });
+    expect(result).toBeNull();
+  });
+
   test("listUsers returns empty page when no users synced", async () => {
     const t = initConvexTest();
     const result = await t.query(api.example.listUsers, {
@@ -31,7 +39,7 @@ describe("kinde-sync example", () => {
     expect(result.isDone).toBe(true);
   });
 
-  test("synced user is returned by getUser, getUserByEmail, and listUsers", async () => {
+  test("synced user is returned by getUser, getUserByEmail, getUserByPhone, and listUsers", async () => {
     const t = initConvexTest();
 
     // Seed a user through the component's webhook sync flow.
@@ -40,6 +48,7 @@ describe("kinde-sync example", () => {
       type: "user.created",
       kindeId: "kp_example123",
       email: "synced@example.com",
+      phone: "+15551234567",
       firstName: "Synced",
       lastName: "User",
       isSuspended: false,
@@ -56,6 +65,11 @@ describe("kinde-sync example", () => {
       email: "synced@example.com",
     });
     expect(byEmail?.kindeId).toBe("kp_example123");
+
+    const byPhone = await t.query(api.example.getUserByPhone, {
+      phone: "+15551234567",
+    });
+    expect(byPhone?.kindeId).toBe("kp_example123");
 
     const list = await t.query(api.example.listUsers, {
       paginationOpts: { numItems: 100, cursor: null },

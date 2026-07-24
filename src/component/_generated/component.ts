@@ -70,6 +70,29 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         },
         Name
       >;
+      getUserByPhone: FunctionReference<
+        "query",
+        "internal",
+        { phone: string },
+        null | {
+          _creationTime: number;
+          _id: string;
+          email?: string;
+          firstName?: string;
+          imageUrl?: string;
+          isSuspended: boolean;
+          kindeId: string;
+          lastName?: string;
+          lastSyncedAt: number;
+          organizations: Array<{
+            code: string;
+            permissions?: string;
+            roles?: string;
+          }>;
+          phone?: string;
+        },
+        Name
+      >;
       handleWebhookEvent: FunctionReference<
         "mutation",
         "internal",

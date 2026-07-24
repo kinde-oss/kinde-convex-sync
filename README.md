@@ -211,6 +211,7 @@ const {
 | --- | --- | --- |
 | `components.kindeSync.lib.getUser` | `{ kindeId: string }` | User or `null` |
 | `components.kindeSync.lib.getUserByEmail` | `{ email: string }` | User or `null` |
+| `components.kindeSync.lib.getUserByPhone` | `{ phone: string }` | User or `null` |
 | `components.kindeSync.lib.listUsers` | `{ paginationOpts }` (from `paginationOptsValidator`) | `{ page: User[], isDone: boolean, continueCursor: string }` |
 
 ### User shape

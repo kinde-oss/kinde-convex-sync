@@ -28,6 +28,7 @@ const userValidator = v.object({
 // Reactive query — get a Kinde user by their Kinde ID
 export const getUser = query({
   args: {kindeId: v.string()},
+  returns: v.union(v.null(), userValidator),
   handler: async (ctx, args) => {
     return await ctx.runQuery(components.kindeSync.lib.getUser, {
       kindeId: args.kindeId
@@ -38,9 +39,21 @@ export const getUser = query({
 // Reactive query — get a Kinde user by email
 export const getUserByEmail = query({
   args: {email: v.string()},
+  returns: v.union(v.null(), userValidator),
   handler: async (ctx, args) => {
     return await ctx.runQuery(components.kindeSync.lib.getUserByEmail, {
       email: args.email
+    });
+  }
+});
+
+// Reactive query — get a Kinde user by phone
+export const getUserByPhone = query({
+  args: {phone: v.string()},
+  returns: v.union(v.null(), userValidator),
+  handler: async (ctx, args) => {
+    return await ctx.runQuery(components.kindeSync.lib.getUserByPhone, {
+      phone: args.phone
     });
   }
 });

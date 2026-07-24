@@ -213,6 +213,21 @@ export const getUserByEmail = query({
   }
 });
 
+export const getUserByPhone = query({
+  args: {phone: v.string()},
+  returns: v.union(v.null(), userValidator),
+  handler: async (ctx, args) => {
+    // Matched verbatim against the stored value: the webhook path stores
+    // `data.user.phone` exactly as Kinde sends it (only ""/null collapse to an
+    // absent field), so no trimming or E.164 normalization happens on write and
+    // none may happen here either.
+    return await ctx.db
+      .query('kindeUsers')
+      .withIndex('by_phone', (q) => q.eq('phone', args.phone))
+      .first();
+  }
+});
+
 export const listUsers = query({
   args: {paginationOpts: paginationOptsValidator},
   returns: v.object({

@@ -2,6 +2,7 @@
 
 ## 0.1.3
 
+- Add `getUserByPhone` reactive query, a peer to `getUserByEmail`
 - Fix null permissions from Kinde webhook payload
 
 ## 0.1.2
