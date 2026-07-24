@@ -77,4 +77,39 @@ describe("kinde-sync example", () => {
     expect(list.page).toHaveLength(1);
     expect(list.page[0]?.kindeId).toBe("kp_example123");
   });
+
+  test("phone-only user is synced and stays queryable by phone", async () => {
+    const t = initConvexTest();
+
+    // Seed through the same webhook flow as the fixture above, but with no
+    // email field at all — the phone-only Kinde user the component is built to
+    // tolerate. The real webhook path reaches the mutation the same way: it
+    // normalizes Kinde's "" / null email to `undefined` before forwarding
+    // (src/client/index.ts).
+    await t.mutation(components.kindeSync.lib.handleWebhookEvent, {
+      webhookId: "example-webhook-002",
+      type: "user.created",
+      kindeId: "kp_phoneonly456",
+      phone: "+15559876543",
+      firstName: "Phone",
+      lastName: "Only",
+      isSuspended: false,
+      organizations: [],
+    });
+
+    const byPhone = await t.query(api.example.getUserByPhone, {
+      phone: "+15559876543",
+    });
+    if (byPhone === null) {
+      throw new Error("expected the phone-only user to be found by phone");
+    }
+    expect(byPhone.kindeId).toBe("kp_phoneonly456");
+    expect(byPhone.phone).toBe("+15559876543");
+
+    // An absent email is stored as a missing key, not an explicit `undefined`
+    // — Convex drops undefined fields on write — so the round-tripped document
+    // has no `email` property at all.
+    expect(byPhone.email).toBeUndefined();
+    expect(Object.keys(byPhone)).not.toContain("email");
+  });
 });
